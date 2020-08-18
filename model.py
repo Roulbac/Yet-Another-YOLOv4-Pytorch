@@ -88,6 +88,7 @@ class HardMish(nn.Module):
         return (x/2) * torch.clamp(x+2, min=0, max=2)
 
 
+
 # Taken from https://github.com/lessw2020/mish
 class Mish(nn.Module):
     def __init__(self):
@@ -95,7 +96,7 @@ class Mish(nn.Module):
 
     def forward(self, x):
         # inlining this saves 1 second per epoch (V100 GPU) vs having a temp x and then returning x(!)
-        return x * torch.tanh(F.softplus(x))
+        return x*torch.tanh(F.softplus(x))
 
 
 # Taken from https://github.com/Randl/DropBlock-pytorch/blob/master/DropBlock.py
@@ -213,7 +214,7 @@ class AddCoordChannels(nn.Module):
 
 
         return torch.cat((x,coords.to(x.device)), dim=1)
-        
+
 
 # Taken and modified from https://github.com/Tianxiaomo/pytorch-YOLOv4/blob/master/models.py
 class ConvBlock(nn.Module):
@@ -229,7 +230,7 @@ class ConvBlock(nn.Module):
             in_channels += 2
             modules.append(AddCoordChannels())
         if ws:
-            modules.append(Conv2dWS(in_channels, out_channels, kernel_size, stride, padding, bias=bias))            
+            modules.append(Conv2dWS(in_channels, out_channels, kernel_size, stride, padding, bias=bias))
         else:
             modules.append(nn.Conv2d(in_channels, out_channels, kernel_size, stride, padding, bias=bias))
         if bn:
@@ -819,19 +820,16 @@ class YOLOv4(nn.Module):
 
         h1, h2, h3 = h
 
-        out1, loss1 = self.yolo1(h1, y)
-        out2, loss2 = self.yolo2(h2, y)
-        out3, loss3 = self.yolo3(h3, y)
 
-        out1 = out1.detach()
-        out2 = out2.detach()
-        out3 = out3.detach()
-
-        out = torch.cat((out1, out2, out3), dim=1)
-
-        loss = (loss1 + loss2 + loss3)/3
-
-        return out, loss
+        if self.training:
+            out1, loss1 = self.yolo1(h1, y)
+            out2, loss2 = self.yolo2(h2, y)
+            out3, loss3 = self.yolo3(h3, y)
+            loss = (loss1 + loss2 + loss3)/3
+            out = torch.cat((out1, out2, out3), dim=1)
+            return out, loss
+        else:
+            return h1, h2, h3
 
 
 if __name__ == "__main__":
